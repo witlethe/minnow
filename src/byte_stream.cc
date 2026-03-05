@@ -3,40 +3,67 @@
 
 using namespace std;
 
-ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ) {}
+ByteStream::ByteStream( uint64_t capacity )
+  : buf_()
+  , written_bytes_( 0 )
+  , read_bytes_( 0 )
+  , closed_( false )
+  , capacity_( capacity )
+  , buffer_bytes_( 0 )
+  , front_limit_( 0 )
+  , error_( false )
+{}
 
 // Push data to stream, but only as much as available capacity allows.
+/* push data to the byte stream, with error handling */
 void Writer::push( string data )
 {
-  // Your code here (and in each method below)
-  debug( "Writer::push({}) not yet implemented", data );
+  if ( closed_ || has_error() )
+    return;
+  uint64_t aval_cap = available_capacity();
+  if ( aval_cap > capacity_ ) {
+    set_error();
+    return;
+  }
+  if ( data.size() > aval_cap ) {
+    data.resize( aval_cap );
+  }
+  if ( data.empty() )
+    return;
+
+  uint64_t bytes_to_write = data.size();
+  buf_.push_back( std::move( data ) );
+  buffer_bytes_ += bytes_to_write;
+  written_bytes_ += bytes_to_write;
 }
 
 // Signal that the stream has reached its ending. Nothing more will be written.
+/* set close flag */
 void Writer::close()
 {
-  debug( "Writer::close() not yet implemented" );
+  closed_ = true;
 }
 
 // Has the stream been closed?
+/* return the state of the close flag */
 bool Writer::is_closed() const
 {
-  debug( "Writer::is_closed() not yet implemented" );
-  return {}; // Your code here.
+  return closed_;
 }
 
 // How many bytes can be pushed to the stream right now?
+/* available capacity now, no error handling */
 uint64_t Writer::available_capacity() const
 {
-  debug( "Writer::available_capacity() not yet implemented" );
-  return {}; // Your code here.
+  uint64_t ret_val = capacity_ - buffer_bytes_;
+  return ret_val;
 }
 
 // Total number of bytes cumulatively pushed to the stream
+/* return pushed bytes from the start time */
 uint64_t Writer::bytes_pushed() const
 {
-  debug( "Writer::bytes_pushed() not yet implemented" );
-  return {}; // Your code here.
+  return written_bytes_;
 }
 
 // Peek at the next bytes in the buffer -- ideally as many as possible.
@@ -45,33 +72,47 @@ uint64_t Writer::bytes_pushed() const
 // the caller to do a lot of extra work.
 string_view Reader::peek() const
 {
-  debug( "Reader::peek() not yet implemented" );
-  return {}; // Your code here.
+  if ( buf_.empty() )
+    return {};
+  std::string_view ret_view = buf_.front();
+  return ret_view.substr( front_limit_ );
 }
 
 // Remove `len` bytes from the buffer.
 void Reader::pop( uint64_t len )
 {
-  debug( "Reader::pop({}) not yet implemented", len );
+  size_t n = std::min( len, buffer_bytes_ );
+  buffer_bytes_ -= n;
+  read_bytes_ += n;
+
+  // 通过底层容器实现弹出 n 个字节的操作
+  while ( n > 0 && !buf_.empty() ) {
+    size_t cur_chunk_size = buf_.front().size() - front_limit_;
+    if ( n < cur_chunk_size ) {
+      front_limit_ += n;
+      break;
+    } else {
+      n -= cur_chunk_size;
+      buf_.pop_front();
+      front_limit_ = 0;
+    }
+  }
 }
 
 // Is the stream finished (closed and fully popped)?
 bool Reader::is_finished() const
 {
-  debug( "Reader::is_finished() not yet implemented" );
-  return {}; // Your code here.
+  return closed_ && buf_.empty();
 }
 
 // Number of bytes currently buffered (pushed and not popped)
 uint64_t Reader::bytes_buffered() const
 {
-  debug( "Reader::bytes_buffered() not yet implemented" );
-  return {}; // Your code here.
+  return buffer_bytes_;
 }
 
 // Total number of bytes cumulatively popped from stream
 uint64_t Reader::bytes_popped() const
 {
-  debug( "Reader::bytes_popped() not yet implemented" );
-  return {}; // Your code here.
+  return read_bytes_;
 }

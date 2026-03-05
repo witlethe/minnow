@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <list>
 #include <string>
 #include <string_view>
 
@@ -23,8 +24,14 @@ public:
 
 protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
-  uint64_t capacity_;
-  bool error_ {};
+  std::list<std::string> buf_; // 底层容器
+  uint64_t written_bytes_;     // 总写入
+  uint64_t read_bytes_;        // 总读取
+  bool closed_;                // 流是否关闭
+  uint64_t capacity_;          // 缓冲区容量
+  uint64_t buffer_bytes_;      // 缓冲区现存字符
+  uint64_t front_limit_;       // 底层容器首元字符数
+  bool error_ {};              // 错误 flag
 };
 
 class Writer : public ByteStream
