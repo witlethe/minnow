@@ -1,19 +1,19 @@
 Checkpoint 0 Writeup
 ====================
 
-My name: [your name here]
+My name: [witlethe]
 
-My SUNet ID: [your sunetid here]
+My SUNet ID: [00]
 
-I collaborated with: [list sunetids here]
+I collaborated with: [myself]
 
-I would like to credit/thank these classmates for their help: [list sunetids here]
+I would like to credit/thank these classmates for their help: [myself]
 
-This lab took me about [n] hours to do. I [did/did not] attend the lab session.
+This lab took me about [4] hours to do. I [did] attend the lab session.
 
-My secret code from section 2.1 was: [code here]
+My secret code from section 2.1 was: [NaN]
 
-I was surprised by or edified to learn that: [describe]
+I was surprised by or edified to learn that: [the bottom d.s. of the bytestream could be discribed as an string list in best practice]
 
 Describe ByteStream implementation. [Describe data structures and
 approach taken. Describe alternative designs considered or tested.

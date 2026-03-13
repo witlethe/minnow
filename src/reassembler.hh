@@ -1,6 +1,8 @@
 #pragma once
 
 #include "byte_stream.hh"
+#include <map>
+#include <string>
 
 class Reassembler
 {
@@ -10,37 +12,38 @@ public:
 
   /*
    * Insert a new substring to be reassembled into a ByteStream.
-   *   `first_index`: the index of the first byte of the substring
-   *   `data`: the substring itself
-   *   `is_last_substring`: this substring represents the end of the stream
-   *   `output`: a mutable reference to the Writer
+   *   `first_index`: 子字符串的第一个字节(表明其在这个字节流中的索引)
+   *   `data`: 子字符串本体
+   *   `is_last_substring`: 指明自己是原始字节流中的最后一个子字符串
+   *   `output`: 对于写入器的引用
    *
-   * The Reassembler's job is to reassemble the indexed substrings (possibly out-of-order
-   * and possibly overlapping) back into the original ByteStream. As soon as the Reassembler
-   * learns the next byte in the stream, it should write it to the output.
+   * 重组器的任务是 重组被编号的子字符串 (可能无序或者冗余) 为原始正确的字节流. 一旦重组器
+   * 读取到了字节流中的下一个字符, 它会将其写入 output_.
    *
-   * If the Reassembler learns about bytes that fit within the stream's available capacity
-   * but can't yet be written (because earlier bytes remain unknown), it should store them
-   * internally until the gaps are filled in.
+   * 如果重组器识别了适合字节流可用容量的 子字符串
+   * 但是还不能写入 (因为原始字节流中更早子字符串还没有收到), 它应该先 存储在内部直到空隙被填满
    *
-   * The Reassembler should discard any bytes that lie beyond the stream's available capacity
-   * (i.e., bytes that couldn't be written even if earlier gaps get filled in).
+   * 重组器应该丢弃超过 ByteStream 可用容量 大小的任何子字符串
+   * (i.e., 即使之前的空隙被填充完成了也不能写入的子字符串).
    *
-   * The Reassembler should close the stream after writing the last byte.
+   * 重组器应该在 最后一个子字符串被写入时 关闭字节流
    */
   void insert( uint64_t first_index, std::string data, bool is_last_substring );
 
-  // How many bytes are stored in the Reassembler itself?
-  // This function is for testing only; don't add extra state to support it.
+  // 重组器内部存储的字节数
+  // 这个函数仅用作测试; 不要添加额外的状态来支持它.
   uint64_t count_bytes_pending() const;
 
-  // Access output stream reader
+  // 访问输出流读取器
   Reader& reader() { return output_.reader(); }
   const Reader& reader() const { return output_.reader(); }
 
-  // Access output stream writer, but const-only (can't write from outside)
+  // 访问输出流写入器 const-only 不可以从外部进行写入
   const Writer& writer() const { return output_.writer(); }
 
 private:
   ByteStream output_;
+  std::map<uint64_t, std::string> inner_cache_;
+  uint64_t first_unassembled_{};
+  uint64_t first_unacceptable_{};
 };

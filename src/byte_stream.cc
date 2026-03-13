@@ -1,5 +1,5 @@
 #include "byte_stream.hh"
-#include "debug.hh"
+// #include "debug.hh"
 
 using namespace std;
 
@@ -11,15 +11,15 @@ ByteStream::ByteStream( uint64_t capacity )
   , capacity_( capacity )
   , buffer_bytes_( 0 )
   , front_limit_( 0 )
-  , error_( false )
 {}
 
 // Push data to stream, but only as much as available capacity allows.
 /* push data to the byte stream, with error handling */
 void Writer::push( string data )
 {
-  if ( closed_ || has_error() )
+  if ( closed_ || has_error() ) {
     return;
+  }
   uint64_t aval_cap = available_capacity();
   if ( aval_cap > capacity_ ) {
     set_error();
@@ -28,8 +28,9 @@ void Writer::push( string data )
   if ( data.size() > aval_cap ) {
     data.resize( aval_cap );
   }
-  if ( data.empty() )
+  if ( data.empty() ) {
     return;
+  }
 
   uint64_t bytes_to_write = data.size();
   buf_.push_back( std::move( data ) );
@@ -72,8 +73,9 @@ uint64_t Writer::bytes_pushed() const
 // the caller to do a lot of extra work.
 string_view Reader::peek() const
 {
-  if ( buf_.empty() )
+  if ( buf_.empty() ) {
     return {};
+  }
   std::string_view ret_view = buf_.front();
   return ret_view.substr( front_limit_ );
 }
@@ -91,11 +93,11 @@ void Reader::pop( uint64_t len )
     if ( n < cur_chunk_size ) {
       front_limit_ += n;
       break;
-    } else {
-      n -= cur_chunk_size;
-      buf_.pop_front();
-      front_limit_ = 0;
     }
+
+    n -= cur_chunk_size;
+    buf_.pop_front();
+    front_limit_ = 0;
   }
 }
 

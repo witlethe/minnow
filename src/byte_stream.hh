@@ -11,14 +11,15 @@ class Writer;
 class ByteStream
 {
 public:
-  explicit ByteStream( uint64_t capacity );
+  explicit ByteStream( uint64_t capacity ); // 字节流构造器，接收字节流的最大容量
 
   // Helper functions (provided) to access the ByteStream's Reader and Writer interfaces
-  Reader& reader();
+  Reader& reader();                         // 读取端
   const Reader& reader() const;
-  Writer& writer();
+  Writer& writer();                         // 写入端
   const Writer& writer() const;
 
+  // 调试接口
   void set_error() { error_ = true; };       // Signal that the stream suffered an error.
   bool has_error() const { return error_; }; // Has the stream had an error?
 
@@ -37,27 +38,26 @@ protected:
 class Writer : public ByteStream
 {
 public:
-  void push( std::string data ); // Push data to stream, but only as much as available capacity allows.
-  void close();                  // Signal that the stream has reached its ending. Nothing more will be written.
+  void push( std::string data ); // 将数据尽可能传输到字节流中，舍弃超出容量的部分
+  void close();                  // 标记流已经来到结尾，无法再继续写入
 
-  bool is_closed() const;              // Has the stream been closed?
-  uint64_t available_capacity() const; // How many bytes can be pushed to the stream right now?
-  uint64_t bytes_pushed() const;       // Total number of bytes cumulatively pushed to the stream
+  bool is_closed() const;              // 查询流是否已经被关闭
+  uint64_t available_capacity() const; // 当前有多少字节可以被
+  uint64_t bytes_pushed() const;       // 流中总写入字节数
 };
 
 class Reader : public ByteStream
 {
 public:
-  std::string_view peek() const; // Peek at the next bytes in the buffer -- ideally as many as possible.
-  void pop( uint64_t len );      // Remove `len` bytes from the buffer.
+  std::string_view peek() const; // 尽可能观测接下来需要读取的字节
+  void pop( uint64_t len );      // 从缓冲区中移除 len 个字节
 
-  bool is_finished() const;        // Is the stream finished (closed and fully popped)?
-  uint64_t bytes_buffered() const; // Number of bytes currently buffered (pushed and not popped)
-  uint64_t bytes_popped() const;   // Total number of bytes cumulatively popped from stream
+  bool is_finished() const;        // 流是否已经结束（关闭 并且 完全读出）
+  uint64_t bytes_buffered() const; // 当前缓冲的字节数（写入但还没有读出）
+  uint64_t bytes_popped() const;   // 流的总读出字节数
 };
 
 /*
- * read: A (provided) helper function thats peeks and pops up to `max_len` bytes
- * from a ByteStream Reader into a string;
+ * 辅助函数，用于 peek 并从流中 pop 出 max_len 个字节到 out 字符串中
  */
 void read( Reader& reader, uint64_t max_len, std::string& out );
