@@ -41,14 +41,18 @@ public:
   // 访问输出流写入器 const-only 不可以从外部进行写入
   const Writer& writer() const { return output_.writer(); }
 
-
 private:
   ByteStream output_;
-  std::map<uint64_t, std::string> inner_cache_{};
-  uint64_t first_unassembled_{0};
-  uint64_t first_unacceptable_{0};
-  uint64_t eof_index_{0};
-  bool has_last_{false};
+  std::map<uint64_t, std::string> inner_cache_ {};
+  uint64_t first_unassembled_ { 0 };
+  uint64_t first_unacceptable_ { 0 };
+  uint64_t eof_index_ { 0 };
+  bool has_last_ { false };
 
-  inline void condition_close();
+  void condition_close()
+  {
+    if ( has_last_ && first_unassembled_ == eof_index_ ) {
+      output_.writer().close();
+    }
+  }
 };

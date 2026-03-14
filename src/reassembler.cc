@@ -3,13 +3,6 @@
 
 using namespace std;
 
-inline void Reassembler::condition_close()
-{
-  if ( has_last_ && first_unassembled_ == eof_index_ ) {
-    output_.writer().close();
-  }
-}
-
 // 将一个待重组的子字符串插入到 ByteStream 中
 void Reassembler::insert( uint64_t first_index, const string& data, bool is_last_substring )
 {
@@ -25,7 +18,7 @@ void Reassembler::insert( uint64_t first_index, const string& data, bool is_last
   }
 
   // left bound of substring is greater than first_unacceptable_
-  if ( start_index >= first_unacceptable_) {
+  if ( start_index >= first_unacceptable_ ) {
     condition_close();
     return;
   }
@@ -41,9 +34,9 @@ void Reassembler::insert( uint64_t first_index, const string& data, bool is_last
 
   // exist element lower than current substring's left bound
   if ( it != inner_cache_.begin() ) {
-    auto prev_it = std::prev( it );   // prev method for bidirectional_iterator or higher
-    uint64_t prev_end = prev_it->first + prev_it->second.size();    // get the right bound of the prev element
-    actual_start = std::max( actual_start, prev_end );    // refresh the leftend of current substring if possible
+    auto prev_it = std::prev( it );                              // prev method for bidirectional_iterator or higher
+    uint64_t prev_end = prev_it->first + prev_it->second.size(); // get the right bound of the prev element
+    actual_start = std::max( actual_start, prev_end ); // refresh the leftend of current substring if possible
   }
   // current substring has been tailed to 0
   if ( actual_start >= end_index ) {
@@ -59,7 +52,8 @@ void Reassembler::insert( uint64_t first_index, const string& data, bool is_last
   end_index = actual_start + final_data.size();
 
   // exist element greater than current substring's left bound
-  while ( it != inner_cache_.end() && it->first < end_index ) { // following key's left bound is lower then current substring's right bound
+  while ( it != inner_cache_.end()
+          && it->first < end_index ) { // following key's left bound is lower then current substring's right bound
     uint64_t next_end = it->first + it->second.size();
     if ( next_end <= end_index ) { // covered
       inner_cache_.erase( it++ );  // delete the following element and get next element, loop
