@@ -1,8 +1,5 @@
 #include "reassembler.hh"
 #include "debug.hh"
-#include <cstdint>
-#include <iterator>
-#include <utility>
 
 using namespace std;
 
@@ -10,53 +7,65 @@ using namespace std;
 void Reassembler::insert( uint64_t first_index, string data, bool is_last_substring )
 {
   auto w = output_.writer();
-  // uint64_t cur_capacity = w.available_capacity();
-  // first_unacceptable_ = first_unassembled_ + cur_capacity;
+  first_unacceptable_ = first_unassembled_ + w.available_capacity();
 
-  // // 查过上届或者超过下界
-  // if (
-  //   ((first_index + data.size()) < first_unassembled_)
-  //   ||
-  //   ((first_index + data.size()) > first_unacceptable_)
-  // ) {
-  //   return;
-  // }
+  uint64_t start_index = first_index;               // substring left end(closed)
+  uint64_t end_index = first_index + data.size();   // substring right end(closed)
 
-
-  uint64_t start_index = first_index;
-  uint64_t end_index = first_index + data.size();
-
-  auto it = inner_cache_.lower_bound(start_index);
-
-  if (it != inner_cache_.begin()) {
-    auto prev_it = prev(it);
-    uint64_t prev_end = prev_it->first + prev_it->second.size();
-    if (prev_end > start_index) {
-      if (prev_end >= end_index) {
-        return;
-      }
-      uint64_t offset = prev_end - start_index;
-      data = data.substr(offset);
-      start_index = prev_end;
-    }
+  if (is_last_substring) {
+    has_last_ = true;
+    eof_index_ = end_index;
   }
 
-  while (it != inner_cache_.end() && it->first < end_index) {
+  // situation 1 : right end over first_unacceptable_, aka excced current byte_stream capacity
+  if (end_index > first_unacceptable_) {
+    return;
+  }
+
+  // situation 2 : right end under first_unassembled_, aka byte covered by substring has been written to the byte_stream
+  if (end_index <= first_unassembled_) {
+    return;
+  }
+
+  // tail the substring before it's insert into the map
+
+  uint64_t actual_start = std::max(first_index, first_unassembled_);
+  auto it = inner_cache_.lower_bound(start_index);
+
+  // situation 3 & 5
+  if (it != inner_cache_.begin()) {
+    auto prev_it = --it;
+    uint64_t prev_end = prev_it->first + prev_it->second.size();
+    actual_start = std::max(actual_start, prev_end);
+  }
+  if (actual_start >= end_index) {
+    return;
+  }
+
+  std::string_view final_data = std::string_view(data).substr(actual_start - first_index);
+
+  // situation 4 : latter overlap, need to colacing recursively
+  while (it != inner_cache_.end() && it->first < end_index) {     // has following key and overlap
     uint64_t next_end = it->first + it->second.size();
-    if (next_end <= end_index) {
-      inner_cache_.erase(it++);
+    if (next_end <= end_index) {    // covered
+      inner_cache_.erase(it++);   // delete the following element and get next element, loop
     } else {
       uint64_t overlap = end_index - it->first;
-      data = data.substr(0, data.size() - overlap);
-      end_index = it->first;
+      final_data.remove_suffix(overlap);
       break;
     }
   }
   
-  if (!data.empty()) {
-    inner_cache_[start_index] = std::move(data);
+  if (!final_data.empty()) {
+    inner_cache_[actual_start] = std::string(final_data);
   }
-
+  
+  auto e = inner_cache_.begin();
+  while (e != inner_cache_.end() && e->first == first_unassembled_) {
+    w.push(std::move(e->second));
+    first_unassembled_ += e->second.size();
+    e = inner_cache_.erase(e);
+  }
 
   if (is_last_substring) {
     w.close();

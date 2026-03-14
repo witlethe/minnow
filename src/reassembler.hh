@@ -46,4 +46,6 @@ private:
   std::map<uint64_t, std::string> inner_cache_;
   uint64_t first_unassembled_{};
   uint64_t first_unacceptable_{};
+  uint64_t eof_index_{};
+  bool has_last_{};
 };
