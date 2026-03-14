@@ -3,69 +3,63 @@
 
 using namespace std;
 
-void Reassembler::condition_close( bool lst, uint64_t eof_idx )
+inline void Reassembler::condition_close()
 {
-  if ( lst && first_unassembled_ == eof_idx ) {
+  if ( has_last_ && first_unassembled_ == eof_index_ ) {
     output_.writer().close();
   }
 }
 
 // 将一个待重组的子字符串插入到 ByteStream 中
-void Reassembler::insert( uint64_t first_index, string data, bool is_last_substring )
+void Reassembler::insert( uint64_t first_index, const string& data, bool is_last_substring )
 {
-  // auto w = output_.writer();
-  first_unacceptable_ = first_unassembled_ + output_.writer().available_capacity();
+  auto& w = output_.writer();
+  uint64_t start_index = first_index;
+  uint64_t end_index = first_index + data.size();
 
-  uint64_t start_index = first_index;             // substring left end(closed)
-  uint64_t end_index = first_index + data.size(); // substring right end(closed)
+  first_unacceptable_ = first_unassembled_ + w.available_capacity();
 
   if ( is_last_substring ) {
     has_last_ = true;
     eof_index_ = end_index;
   }
 
-  // situation 1 : right end over first_unacceptable_, aka excced current byte_stream capacity
-  if ( end_index > first_unacceptable_ ) {
-    data = data.substr( 0, first_unacceptable_ - first_index );
-    end_index = first_unacceptable_;
-  }
-
-  // situation 2 : right end under first_unassembled_, aka byte covered by substring has been written to the
-  // byte_stream
-  if ( end_index <= first_unassembled_ ) {
-    condition_close( has_last_, eof_index_ );
+  // left bound of substring is greater than first_unacceptable_
+  if ( start_index >= first_unacceptable_) {
+    condition_close();
     return;
   }
 
-  // tail the substring before it's insert into the map
+  // right bound of substring is less than first_unassembled_
+  if ( end_index <= first_unassembled_ ) {
+    condition_close();
+    return;
+  }
 
   uint64_t actual_start = std::max( first_index, first_unassembled_ );
   auto it = inner_cache_.lower_bound( start_index );
 
-  // situation 3 & 5
+  // exist element lower than current substring's left bound
   if ( it != inner_cache_.begin() ) {
-    auto prev_it = std::prev( it );
-    uint64_t prev_end = prev_it->first + prev_it->second.size();
-    actual_start = std::max( actual_start, prev_end );
+    auto prev_it = std::prev( it );   // prev method for bidirectional_iterator or higher
+    uint64_t prev_end = prev_it->first + prev_it->second.size();    // get the right bound of the prev element
+    actual_start = std::max( actual_start, prev_end );    // refresh the leftend of current substring if possible
   }
+  // current substring has been tailed to 0
   if ( actual_start >= end_index ) {
-    condition_close( has_last_, eof_index_ );
+    condition_close();
     return;
   }
 
   std::string_view final_data = std::string_view( data ).substr( actual_start - first_index );
-
-  // Truncate final_data if it exceeds capacity
+  // cut bytes exceed first_unacceptable_
   if ( actual_start + final_data.size() > first_unacceptable_ ) {
     final_data.remove_suffix( actual_start + final_data.size() - first_unacceptable_ );
   }
-
-  // Update end_index to actual end
   end_index = actual_start + final_data.size();
 
-  // situation 4 : latter overlap, need to colacing recursively
-  while ( it != inner_cache_.end() && it->first < end_index
-          && it->first >= actual_start ) { // has following key and overlap
+  // exist element greater than current substring's left bound
+  while ( it != inner_cache_.end() && it->first < end_index ) { // following key's left bound is lower then current substring's right bound
     uint64_t next_end = it->first + it->second.size();
     if ( next_end <= end_index ) { // covered
       inner_cache_.erase( it++ );  // delete the following element and get next element, loop
@@ -83,11 +77,11 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
   auto e = inner_cache_.begin();
   while ( e != inner_cache_.end() && e->first == first_unassembled_ ) {
     first_unassembled_ += e->second.size();
-    output_.writer().push( std::move( e->second ) );
+    w.push( std::move( e->second ) );
     e = inner_cache_.erase( e );
   }
 
-  condition_close( has_last_, eof_index_ );
+  condition_close();
 }
 
 // How many bytes are stored in the Reassembler itself?

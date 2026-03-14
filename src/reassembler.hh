@@ -28,7 +28,7 @@ public:
    *
    * 重组器应该在 最后一个子字符串被写入时 关闭字节流
    */
-  void insert( uint64_t first_index, std::string data, bool is_last_substring );
+  void insert( uint64_t first_index, const std::string& data, bool is_last_substring );
 
   // 重组器内部存储的字节数
   // 这个函数仅用作测试; 不要添加额外的状态来支持它.
@@ -41,7 +41,6 @@ public:
   // 访问输出流写入器 const-only 不可以从外部进行写入
   const Writer& writer() const { return output_.writer(); }
 
-  void condition_close(bool, uint64_t);
 
 private:
   ByteStream output_;
@@ -50,4 +49,6 @@ private:
   uint64_t first_unacceptable_{0};
   uint64_t eof_index_{0};
   bool has_last_{false};
+
+  inline void condition_close();
 };
