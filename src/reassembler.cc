@@ -6,25 +6,22 @@ using namespace std;
 // 将一个待重组的子字符串插入到 ByteStream 中
 void Reassembler::insert( uint64_t first_index, const string& data, bool is_last_substring )
 {
+
   auto& w = output_.writer();
+
+  // the range of recieved-substring: [start_index, end_index)
+  // * we used to represent the range by left-close & right-open
   uint64_t start_index = first_index;
   uint64_t end_index = first_index + data.size();
-
   first_unacceptable_ = first_unassembled_ + w.available_capacity();
 
+  // set flags for conditionally close ByteStream
   if ( is_last_substring ) {
     has_last_ = true;
     eof_index_ = end_index;
   }
 
-  // left bound of substring is greater than first_unacceptable_
-  if ( start_index >= first_unacceptable_ ) {
-    condition_close();
-    return;
-  }
-
-  // right bound of substring is less than first_unassembled_
-  if ( end_index <= first_unassembled_ ) {
+  if ( start_index >= first_unacceptable_ || end_index <= first_unassembled_ ) {
     condition_close();
     return;
   }
@@ -44,7 +41,9 @@ void Reassembler::insert( uint64_t first_index, const string& data, bool is_last
     return;
   }
 
-  std::string_view final_data = std::string_view( data ).substr( actual_start - first_index );
+  std::string_view final_data( data );
+  final_data.remove_prefix( actual_start - first_index );
+
   // cut bytes exceed first_unacceptable_
   if ( actual_start + final_data.size() > first_unacceptable_ ) {
     final_data.remove_suffix( actual_start + final_data.size() - first_unacceptable_ );
