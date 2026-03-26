@@ -1,5 +1,6 @@
 #include "reassembler.hh"
 #include "debug.hh"
+#include <iterator>
 
 using namespace std;
 
@@ -8,65 +9,57 @@ void Reassembler::insert( uint64_t first_index, const string& data, bool is_last
 {
 
   auto& w = output_.writer();
+  first_unacceptable_ = first_unassembled_ + w.available_capacity();  // get current status of writer
 
-  // the range of recieved-substring: [start_index, end_index)
-  // * we used to represent the range by left-close & right-open
-  uint64_t start_index = first_index;
   uint64_t end_index = first_index + data.size();
-  first_unacceptable_ = first_unassembled_ + w.available_capacity();
+  uint64_t actual_start = std::max(first_index, first_unassembled_);
+  uint64_t actual_end = std::min(first_index + data.size(), first_unacceptable_);
 
-  // set flags for conditionally close ByteStream
-  if ( is_last_substring ) {
+  if ( is_last_substring ) {    // set flags for conditional closing
     has_last_ = true;
     eof_index_ = end_index;
   }
 
-  if ( start_index >= first_unacceptable_ || end_index <= first_unassembled_ ) {
+  if (actual_start >= actual_end) {
     condition_close();
     return;
   }
 
-  uint64_t actual_start = std::max( first_index, first_unassembled_ );
-  auto it = inner_cache_.lower_bound( start_index );
+  auto it = inner_cache_.lower_bound( actual_start );    // get insert location
 
   // exist element lower than current substring's left bound
   if ( it != inner_cache_.begin() ) {
-    auto prev_it = std::prev( it );                              // prev method for bidirectional_iterator or higher
+    auto prev_it = std::prev( it );
     uint64_t prev_end = prev_it->first + prev_it->second.size(); // get the right bound of the prev element
-    actual_start = std::max( actual_start, prev_end ); // refresh the leftend of current substring if possible
+    actual_start = std::max( actual_start, prev_end );  // * strategy: use former substring's end
   }
-  // current substring has been tailed to 0
-  if ( actual_start >= end_index ) {
+
+  if ( actual_start >= actual_end ) {   // aka, covered by former string
     condition_close();
     return;
   }
 
   std::string_view final_data( data );
   final_data.remove_prefix( actual_start - first_index );
+  final_data.remove_suffix(end_index - actual_end);
 
-  // cut bytes exceed first_unacceptable_
-  if ( actual_start + final_data.size() > first_unacceptable_ ) {
-    final_data.remove_suffix( actual_start + final_data.size() - first_unacceptable_ );
-  }
-  end_index = actual_start + final_data.size();
-
-  // exist element greater than current substring's left bound
-  while ( it != inner_cache_.end()
-          && it->first < end_index ) { // following key's left bound is lower then current substring's right bound
+  while ( it != inner_cache_.end() && it->first < actual_end ) {  // coleascing all covered or ovelaped substring stored in map
     uint64_t next_end = it->first + it->second.size();
-    if ( next_end <= end_index ) { // covered
-      inner_cache_.erase( it++ );  // delete the following element and get next element, loop
-    } else {
-      uint64_t overlap = end_index - it->first;
+    if ( next_end <= actual_end ) { // covered
+      inner_cache_.erase( it++ );
+    } else {  // overlaped
+      uint64_t overlap = actual_end - it->first;
       final_data.remove_suffix( overlap );
       break;
     }
   }
 
-  if ( !final_data.empty() ) {
-    inner_cache_[actual_start] = std::string( final_data );
+  if (final_data.empty()) {   // nothing changed
+    return;
   }
+  inner_cache_[actual_start] = std::string( final_data );
 
+  // try push substrings into writer
   auto e = inner_cache_.begin();
   while ( e != inner_cache_.end() && e->first == first_unassembled_ ) {
     first_unassembled_ += e->second.size();
