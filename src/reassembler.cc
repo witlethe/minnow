@@ -1,6 +1,5 @@
 #include "reassembler.hh"
 #include "debug.hh"
-#include <iterator>
 
 using namespace std;
 
