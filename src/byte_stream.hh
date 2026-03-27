@@ -14,9 +14,9 @@ public:
   explicit ByteStream( uint64_t capacity ); // 字节流构造器，接收字节流的最大容量
 
   // Helper functions (provided) to access the ByteStream's Reader and Writer interfaces
-  Reader& reader();                         // 读取端
+  Reader& reader(); // 读取端
   const Reader& reader() const;
-  Writer& writer();                         // 写入端
+  Writer& writer(); // 写入端
   const Writer& writer() const;
 
   // 调试接口
