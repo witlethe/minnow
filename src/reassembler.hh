@@ -1,6 +1,7 @@
 #pragma once
 
 #include "byte_stream.hh"
+#include <cstdint>
 #include <map>
 #include <string>
 
@@ -40,6 +41,8 @@ public:
 
   // 访问输出流写入器 const-only 不可以从外部进行写入
   const Writer& writer() const { return output_.writer(); }
+
+  uint64_t get_first_unassembled() const { return first_unassembled_; }
 
 private:
   ByteStream output_;

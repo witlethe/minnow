@@ -14,7 +14,7 @@ public:
    * The TCPReceiver receives TCPSenderMessages, inserting their payload into the Reassembler
    * at the correct stream index.
    */
-  void receive( TCPSenderMessage message );
+  void receive( const TCPSenderMessage& message );
 
   // The TCPReceiver sends TCPReceiverMessages to the peer's TCPSender.
   TCPReceiverMessage send() const;
@@ -27,4 +27,7 @@ public:
 
 private:
   Reassembler reassembler_;
+  Wrap32  zero_point_{0};
+  bool  is_ISN_valid{};
+  bool  is_closed_{};
 };
